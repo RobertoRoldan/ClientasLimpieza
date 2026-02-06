@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CleanControl Elite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .active-nav { color: #2563eb; transform: translateY(-5px); transition: all 0.3s; }
+        .day-node { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        .has-job { background-color: #dbeafe; font-weight: bold; color: #1e40af; border: 1px solid #bfdbfe; }
+        .selected-day { background-color: #2563eb !important; color: white !important; box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
+        .stat-card { background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="bg-slate-50 pb-28 text-slate-800 font-medium">
+
+    <header class="bg-white/80 backdrop-blur-md shadow-sm p-4 sticky top-0 z-50 flex justify-between items-center border-b border-slate-100">
+        <h1 class="text-xl font-black text-blue-600 italic tracking-tighter">CLEANCONTROL</h1>
+        <div id="statusIcon"><i class="fas fa-chart-pie text-blue-500"></i></div>
+    </header>
+
+    <main class="p-4 max-w-md mx-auto">
+        
+        <section id="registro" class="tab-content active">
+            <div class="mb-8">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Mis Clientas</h2>
+                <div class="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 mb-4">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="nombreClienta" placeholder="Nombre" class="flex-1 bg-slate-100 p-3 rounded-xl outline-none text-sm border-none">
+                        <input type="number" id="tarifaHora" placeholder="€/h" class="w-20 bg-slate-100 p-3 rounded-xl outline-none text-sm border-none">
+                        <button onclick="guardarClienta()" class="bg-blue-600 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="listaClientas" class="flex flex-wrap gap-2 text-sm"></div>
+                </div>
+            </div>
+
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Anotar Jornada</h2>
+            <form id="jobForm" class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 space-y-4">
+                <select id="selectClienta" class="w-full bg-slate-100 p-4 rounded-2xl outline-none border-none text-sm" required>
+                    <option value="">¿Para quién has trabajado?</option>
+                </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 ml-2 font-bold">FECHA</label>
+                        <input type="date" id="fecha" class="w-full bg-slate-100 p-4 rounded-2xl border-none text-sm" required>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 ml-2 font-bold">HORAS</label>
+                        <input type="number" step="0.1" id="horas" placeholder="0.0" class="w-full bg-slate-100 p-4 rounded-2xl border-none text-sm" required>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 p-2">
+                    <input type="checkbox" id="pagado" checked class="w-5 h-5 accent-blue-600">
+                    <label for="pagado" class="text-sm">¿Ya te han pagado?</label>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 active:scale-95 transition-all">GUARDAR</button>
+            </form>
+        </section>
+
+        <section id="calendario" class="tab-content">
+            <div class="bg-blue-700 p-5 rounded-[2rem] text-white shadow-lg flex justify-between items-center mb-6">
+                <div>
+                    <p id="labelAnual" class="text-[9px] font-bold opacity-70 uppercase tracking-widest text-blue-100">Balance Anual</p>
+                    <p id="totalAnual" class="text-2xl font-black">0.00€</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[9px] font-bold opacity-70 uppercase tracking-widest text-blue-100">Servicios</p>
+                    <p id="countAnual" class="text-2xl font-black">0</p>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4 px-2">
+                <div>
+                    <h2 id="calendarMonth" class="text-xl font-black text-slate-800 capitalize leading-tight">Mes</h2>
+                    <p class="text-[10px] text-orange-500 font-bold uppercase tracking-widest" id="totalPendienteLabel">Pendiente: 0€</p>
+                </div>
+                <div class="flex gap-1 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                    <button onclick="changeMonth(-1)" class="w-10 h-10 flex items-center justify-center text-blue-600"><i class="fas fa-chevron-left"></i></button>
+                    <button onclick="changeMonth(1)" class="w-10 h-10 flex items-center justify-center text-blue-600"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 mb-6 text-sm">
+                <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-300 mb-4">
+                    <span>DOM</span><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-center"></div>
+            </div>
+
+            <div id="diaDetalle" class="space-y-3 min-h-[50px] mb-6"></div>
+
+            <div class="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
+                <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest text-center">Ganancias del mes</p>
+                <p id="totalMes" class="text-3xl font-black text-center mt-1">0.00€</p>
+            </div>
+        </section>
+
+        <section id="config" class="tab-content">
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Ranking de Clientas</h2>
+            <div id="statsRanking" class="space-y-3 mb-8">
+                </div>
+
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Seguridad</h2>
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-6 text-center">
+                <button onclick="exportarDatos()" class="w-full bg-blue-50 text-blue-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest mb-4">Descargar Copia</button>
+                <input type="file" id="importFile" class="hidden" accept=".json">
+                <button onclick="document.getElementById('importFile').click()" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Restaurar Copia</button>
+            </div>
+
+            <button onclick="resetApp()" class="w-full text-red-400 font-bold text-[10px] uppercase tracking-tighter py-4">Borrar todos los datos permanentemente</button>
+        </section>
+
+    </main>
+
+    <nav class="fixed bottom-6 left-6 right-6 bg-white/95 backdrop-blur-md shadow-2xl rounded-[2rem] border border-slate-100 flex justify-around py-4 z-50">
+        <button onclick="showTab('registro', this)" class="flex flex-col items-center gap-1 active-nav px-4">
+            <i class="fas fa-plus-circle text-xl"></i>
+            <span class="text-[9px] font-black uppercase">Anotar</span>
+        </button>
+        <button onclick="showTab('calendario', this)" class="flex flex-col items-center gap-1 text-slate-300 px-4">
+            <i class="fas fa-calendar-alt text-xl"></i>
+            <span class="text-[9px] font-black uppercase">Libreta</span>
+        </button>
+        <button onclick="showTab('config', this)" class="flex flex-col items-center gap-1 text-slate-300 px-4">
+            <i class="fas fa-chart-bar text-xl"></i>
+            <span class="text-[9px] font-black uppercase">Datos</span>
+        </button>
+    </nav>
+
+    <script>
+        let trabajos = JSON.parse(localStorage.getItem('cc_jobs')) || [];
+        let clientas = JSON.parse(localStorage.getItem('cc_clients')) || [];
+        let currentDate = new Date();
+        let selectedDayStr = new Date().toISOString().split('T')[0];
+
+        function showTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.className = "flex flex-col items-center gap-1 text-slate-300 px-4");
+            document.getElementById(tabId).classList.add('active');
+            el.className = "flex flex-col items-center gap-1 active-nav px-4";
+            if(tabId === 'calendario') initCalendar();
+            if(tabId === 'registro') { renderClientas(); updateClientSelect(); }
+            if(tabId === 'config') renderStats();
+        }
+
+        // --- ESTADÍSTICAS ---
+        function renderStats() {
+            const container = document.getElementById('statsRanking');
+            container.innerHTML = '';
+
+            if (trabajos.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic text-center p-4">No hay datos suficientes para estadísticas.</p>';
+                return;
+            }
+
+            // Agrupar datos por clienta
+            const stats = {};
+            trabajos.forEach(t => {
+                if (!stats[t.clienta]) {
+                    stats[t.clienta] = { nombre: t.clienta, totalDinero: 0, totalHoras: 0, visitas: 0 };
+                }
+                stats[t.clienta].totalDinero += t.total;
+                stats[t.clienta].totalHoras += t.horas;
+                stats[t.clienta].visitas += 1;
+            });
+
+            // Convertir a array y ordenar por dinero
+            const sortedStats = Object.values(stats).sort((a, b) => b.totalDinero - a.totalDinero);
+
+            sortedStats.forEach((s, index) => {
+                const medalColor = index === 0 ? 'text-yellow-500' : (index === 1 ? 'text-slate-400' : 'text-orange-400');
+                container.innerHTML += `
+                    <div class="stat-card p-4 rounded-3xl shadow-sm animate-slideUp">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg ${index < 3 ? medalColor : 'text-slate-200'}"><i class="fas fa-crown"></i></span>
+                                <span class="font-black text-slate-800">${s.nombre}</span>
+                            </div>
+                            <span class="text-blue-600 font-black text-lg">${s.totalDinero.toFixed(2)}€</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                            <span><i class="fas fa-clock mr-1 text-slate-300"></i> ${s.totalHoras.toFixed(1)} Horas</span>
+                            <span><i class="fas fa-home mr-1 text-slate-300"></i> ${s.visitas} Visitas</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div class="bg-blue-500 h-full rounded-full" style="width: ${(s.totalDinero / sortedStats[0].totalDinero * 100)}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- GESTIÓN CLIENTAS ---
+        function guardarClienta() {
+            const nombre = document.getElementById('nombreClienta').value.trim();
+            const tarifa = parseFloat(document.getElementById('tarifaHora').value);
+            if(!nombre || isNaN(tarifa)) return;
+            clientas.push({ id: Date.now(), nombre, tarifa });
+            save(); renderClientas(); updateClientSelect();
+            document.getElementById('nombreClienta').value = '';
+            document.getElementById('tarifaHora').value = '';
+        }
+
+        function eliminarClienta(id) {
+            if(!confirm("¿Borrar clienta de la lista?")) return;
+            clientas = clientas.filter(c => c.id !== id);
+            save(); renderClientas(); updateClientSelect();
+        }
+
+        function renderClientas() {
+            const container = document.getElementById('listaClientas');
+            container.innerHTML = clientas.length ? '' : '<p class="text-xs text-slate-400 italic">No tienes clientas.</p>';
+            clientas.forEach(c => {
+                container.innerHTML += `
+                    <div class="bg-slate-100 pl-4 pr-1 py-1 rounded-full flex items-center gap-2 border border-slate-200">
+                        <span class="text-xs font-black">${c.nombre}</span>
+                        <button onclick="eliminarClienta(${c.id})" class="w-6 h-6 rounded-full bg-white text-red-500 flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button>
+                    </div>`;
+            });
+        }
+
+        function updateClientSelect() {
+            const select = document.getElementById('selectClienta');
+            select.innerHTML = '<option value="">¿Para quién?</option>';
+            clientas.forEach(c => select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.tarifa}€/h)</option>`);
+        }
+
+        // --- TRABAJOS ---
+        document.getElementById('jobForm').onsubmit = (e) => {
+            e.preventDefault();
+            const cid = document.getElementById('selectClienta').value;
+            const clienta = clientas.find(c => c.id == cid);
+            const horas = parseFloat(document.getElementById('horas').value);
+            const fecha = document.getElementById('fecha').value;
+            const pagado = document.getElementById('pagado').checked;
+            
+            trabajos.push({
+                id: Date.now(), clienta: clienta.nombre, tarifa: clienta.tarifa,
+                fecha: fecha, horas: horas, total: horas * clienta.tarifa, pagado: pagado
+            });
+            save(); e.target.reset();
+            alert("✅ Servicio guardado");
+        };
+
+        function eliminarTrabajo(id) {
+            if(!confirm("¿Borrar este servicio?")) return;
+            trabajos = trabajos.filter(t => t.id !== id);
+            save(); initCalendar();
+        }
+
+        function alternarPago(id) {
+            const t = trabajos.find(x => x.id === id);
+            t.pagado = !t.pagado;
+            save(); initCalendar();
+        }
+
+        // --- CALENDARIO ---
+        function changeMonth(dir) {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            initCalendar();
+        }
+
+        function initCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthLabel = document.getElementById('calendarMonth');
+            grid.innerHTML = '';
+            const month = currentDate.getMonth();
+            const year = currentDate.getFullYear();
+            monthLabel.innerText = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            for(let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+            for(let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const hasWork = trabajos.some(t => t.fecha === dateStr);
+                const isSelected = selectedDayStr === dateStr ? 'selected-day' : '';
+                grid.innerHTML += `<div class="day-node ${isSelected} ${hasWork ? 'has-job' : ''}" onclick="selectDay('${dateStr}')">${d}</div>`;
+            }
+            renderDetails();
+            renderResumenAnual();
+        }
+
+        function renderResumenAnual() {
+            const year = currentDate.getFullYear();
+            const filtered = trabajos.filter(t => new Date(t.fecha).getFullYear() === year);
+            const total = filtered.reduce((acc, t) => acc + t.total, 0);
+            document.getElementById('labelAnual').innerText = `Balance Anual ${year}`;
+            document.getElementById('totalAnual').innerText = `${total.toFixed(2)}€`;
+            document.getElementById('countAnual').innerText = filtered.length;
+        }
+
+        function selectDay(dateStr) {
+            selectedDayStr = dateStr;
+            initCalendar();
+        }
+
+        function renderDetails() {
+            const container = document.getElementById('diaDetalle');
+            const filtered = trabajos.filter(t => t.fecha === selectedDayStr);
+            container.innerHTML = `<h3 class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Día ${selectedDayStr}</h3>`;
+            
+            filtered.forEach(t => {
+                container.innerHTML += `
+                    <div class="bg-white p-4 rounded-3xl shadow-sm flex justify-between items-center border border-slate-50">
+                        <div class="flex items-center gap-3">
+                            <button onclick="alternarPago(${t.id})" class="w-8 h-8 rounded-full ${t.pagado ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'} flex items-center justify-center text-xs">
+                                <i class="fas ${t.pagado ? 'fa-check' : 'fa-clock'}"></i>
+                            </button>
+                            <div><p class="font-black text-slate-800 text-sm">${t.clienta}</p><p class="text-[10px] text-slate-400">${t.horas}h x ${t.tarifa}€</p></div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <p class="font-black text-blue-600">${t.total.toFixed(2)}€</p>
+                            <button onclick="eliminarTrabajo(${t.id})" class="text-slate-200 hover:text-red-500 p-2 transition-colors"><i class="fas fa-trash-alt text-xs"></i></button>
+                        </div>
+                    </div>`;
+            });
+
+            const month = currentDate.getMonth();
+            const year = currentDate.getFullYear();
+            let totalM = 0; let pend = 0;
+            trabajos.forEach(t => {
+                const td = new Date(t.fecha);
+                if(td.getMonth() === month && td.getFullYear() === year) {
+                    totalM += t.total; if(!t.pagado) pend += t.total;
+                }
+            });
+            document.getElementById('totalMes').innerText = `${totalM.toFixed(2)}€`;
+            document.getElementById('totalPendienteLabel').innerText = `Pendiente: ${pend.toFixed(2)}€`;
+        }
+
+        function save() {
+            localStorage.setItem('cc_jobs', JSON.stringify(trabajos));
+            localStorage.setItem('cc_clients', JSON.stringify(clientas));
+        }
+
+        function exportarDatos() {
+            const blob = new Blob([JSON.stringify({trabajos, clientas})], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Copia_Seguridad.json`;
+            a.click();
+        }
+
+        document.getElementById('importFile').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const data = JSON.parse(f.target.result);
+                trabajos = data.trabajos || []; clientas = data.clientas || [];
+                save(); location.reload();
+            };
+            reader.readAsText(e.target.files[0]);
+        };
+
+        function resetApp() { if(confirm("¿Estás seguro? Borrará todo permanentemente.")) { localStorage.clear(); location.reload(); } }
+
+        renderClientas();
+        updateClientSelect();
+    </script>
+</body>
+</html>
